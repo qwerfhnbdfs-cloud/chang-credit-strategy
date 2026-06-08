@@ -8,6 +8,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import requests
+import time
 from io import BytesIO
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -218,13 +220,10 @@ class StrategyCalculator:
 
 st.title("📊 长信用策略可视化 - 状态转换信号系统")
 
-# --- 文件上传 ---
-st.sidebar.header("📁 数据文件")
-uploaded_file = st.sidebar.file_uploader(
-    "上传Excel数据文件",
-    type=["xlsx", "xls"],
-    help="上传包含'财富指数—趋势'和'信用曲线—价格'两个sheet的Excel文件"
-)
+# ============ 数据加载配置 ============
+# GitHub Raw URL（部署后改成你的实际链接）
+# 格式: https://raw.githubusercontent.com/用户名/仓库名/分支名/文件名.xlsx
+DATA_URL = "https://raw.githubusercontent.com/你的用户名/chang-credit-strategy/main/中债财富指数对应的期限轮动策略V1.xlsx"
 
 # --- 侧边栏参数 ---
 st.sidebar.header("⚙️ 参数设置")
@@ -253,21 +252,60 @@ params = {
     'confirm_days': 3,
 }
 
-# --- 加载数据 ---
+# ============ 数据加载 ============
+@st.cache_data(ttl=300, show_spinner=False)
+def load_data_from_url(url):
+    """从URL下载Excel数据（缓存5分钟）"""
+    # 添加时间戳参数绕过CDN缓存
+    url_with_ts = f"{url}?t={int(time.time() // 300)}"
+    resp = requests.get(url_with_ts, timeout=30)
+    resp.raise_for_status()
+    return StrategyCalculator(resp.content)
+
+def load_data_from_upload(file):
+    """从上传文件加载数据"""
+    return StrategyCalculator(file.read())
+
+st.sidebar.header("📁 数据文件")
+
+# 手动上传（覆盖模式）
+uploaded_file = st.sidebar.file_uploader(
+    "📤 临时上传覆盖（可选）",
+    type=["xlsx", "xls"],
+    help="留空则自动从GitHub读取最新数据；上传则临时用上传的文件"
+)
+
+calc = None
+data_source = ""
+
+# 优先使用手动上传的文件
 if uploaded_file is not None:
     try:
-        excel_bytes = uploaded_file.read()
-        calc = StrategyCalculator(excel_bytes)
-        st.sidebar.success(f"✅ 已加载: {uploaded_file.name}")
+        calc = load_data_from_upload(uploaded_file)
+        data_source = f"手动上传: {uploaded_file.name}"
+        st.sidebar.success(f"✅ 已加载上传文件: {uploaded_file.name}")
     except Exception as e:
-        st.sidebar.error(f"❌ 加载失败: {e}")
-        calc = None
-else:
-    calc = None
+        st.sidebar.error(f"❌ 上传文件加载失败: {e}")
+
+# 如果没有手动上传，尝试从URL自动加载
+if calc is None:
+    if "你的用户名" not in DATA_URL:
+        try:
+            with st.spinner("🔄 正在从GitHub加载最新数据..."):
+                calc = load_data_from_url(DATA_URL)
+            data_source = "GitHub 自动同步"
+            st.sidebar.success("✅ 已从GitHub加载最新数据")
+        except Exception as e:
+            st.sidebar.error(f"❌ GitHub数据加载失败: {e}")
+            st.sidebar.info("💡 请检查 DATA_URL 配置是否正确，或临时上传文件")
+    else:
+        st.sidebar.warning("⚠️ 请先在代码中设置 DATA_URL")
 
 if calc is None:
-    st.info("👆 请在左侧边栏上传Excel数据文件")
+    st.info("👆 请在左侧上传Excel数据文件，或配置 GitHub 数据源")
     st.stop()
+
+st.sidebar.markdown(f"<small>📡 数据来源: {data_source}</small>", unsafe_allow_html=True)
 
 # --- 执行计算 ---
 with st.spinner("🔄 正在计算..."):
