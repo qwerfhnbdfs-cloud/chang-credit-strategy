@@ -223,7 +223,7 @@ st.title("📊 长信用策略可视化 - 状态转换信号系统")
 # ============ 数据加载配置 ============
 # GitHub Raw URL（部署后改成你的实际链接）
 # 格式: https://raw.githubusercontent.com/用户名/仓库名/分支名/文件名.xlsx
-DATA_URL = "https://github.com/qwerfhnbdfs-cloud/chang-credit-strategy/blob/main/中债财富指数对应的期限轮动策略V1
+DATA_URL = "https://raw.githubusercontent.com/qwerfhnbdfs-cloud/chang-credit-strategy/main/中债财富指数对应的期限轮动策略V1.xlsx"
 .xlsx"
 
 # --- 侧边栏参数 ---
