@@ -765,41 +765,40 @@ with tab_rules:
 
         st.markdown("""
         <div style="display:flex;flex-direction:column;align-items:center;margin:16px 0;">
-            <!-- 列标题 -->
-            <div style="display:flex;width:100%;max-width:700px;">
-                <div style="flex:1;text-align:center;padding:8px;font-weight:bold;color:#666;"></div>
-                <div style="flex:2;text-align:center;padding:8px;background:#e8f5e9;border-radius:8px 8px 0 0;font-weight:bold;color:#2e7d32;">Y轴 > 0（动量向上）</div>
-                <div style="flex:2;text-align:center;padding:8px;background:#ffebee;border-radius:8px 8px 0 0;font-weight:bold;color:#c62828;">Y轴 ≤ 0（动量向下）</div>
+            <!-- X轴列标题 -->
+            <div style="display:flex;width:100%;max-width:600px;margin-left:80px;">
+                <div style="flex:1;text-align:center;padding:6px;font-size:13px;font-weight:bold;color:#e74c3c;background:#ffebee;border-radius:6px 6px 0 0;margin-right:4px;">X轴 ≤ 0<br><small>相对强度为负</small></div>
+                <div style="flex:1;text-align:center;padding:6px;font-size:13px;font-weight:bold;color:#27ae60;background:#e8f5e9;border-radius:6px 6px 0 0;">X轴 > 0<br><small>相对强度为正</small></div>
             </div>
-            <!-- 第一行 -->
-            <div style="display:flex;width:100%;max-width:700px;">
-                <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;background:#e3f2fd;font-weight:bold;color:#1565c0;border-radius:8px 0 0 0;">X轴 > 0<br><small style="font-weight:normal;">相对强度为正<br>长端强于短端</small></div>
-                <div style="flex:2;padding:16px;background:#d5f5e3;text-align:center;border:2px solid #27ae60;">
-                    <div style="font-size:20px;font-weight:bold;color:#27ae60;">🟢 领先</div>
-                    <div style="font-size:13px;color:#333;margin-top:8px;">长端强于短端<br>且动量向上<br><b style="color:#27ae60;">→ 最佳买入区域</b></div>
+            <!-- 第一行：Y轴 > 0 -->
+            <div style="display:flex;width:100%;max-width:600px;">
+                <div style="width:76px;display:flex;align-items:center;justify-content:center;padding:8px;background:#e8f5e9;font-weight:bold;font-size:12px;color:#2e7d32;border-radius:6px 0 0 0;margin-right:4px;">Y轴 > 0<br>动量向上</div>
+                <div style="flex:1;padding:14px;background:#d6eaf8;text-align:center;border:2px solid #3498db;border-right:1px solid #3498db;border-bottom:1px solid #3498db;">
+                    <div style="font-size:18px;font-weight:bold;color:#3498db;">🔵 改善</div>
+                    <div style="font-size:12px;color:#333;margin-top:6px;">相对强度为负<br>但动量向上<br><b style="color:#3498db;">→ 关注区域</b></div>
                 </div>
-                <div style="flex:2;padding:16px;background:#fdebd0;text-align:center;border:2px solid #f39c12;">
-                    <div style="font-size:20px;font-weight:bold;color:#f39c12;">🟡 减弱</div>
-                    <div style="font-size:13px;color:#333;margin-top:8px;">长端仍强于短端<br>但动量开始减弱<br><b style="color:#f39c12;">→ 警惕区域</b></div>
+                <div style="flex:1;padding:14px;background:#d5f5e3;text-align:center;border:2px solid #27ae60;border-bottom:1px solid #27ae60;border-radius:0 6px 0 0;">
+                    <div style="font-size:18px;font-weight:bold;color:#27ae60;">🟢 领先</div>
+                    <div style="font-size:12px;color:#333;margin-top:6px;">相对强度为正<br>且动量向上<br><b style="color:#27ae60;">→ 最佳买入区域</b></div>
                 </div>
             </div>
-            <!-- 第二行 -->
-            <div style="display:flex;width:100%;max-width:700px;">
-                <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;background:#e3f2fd;font-weight:bold;color:#1565c0;border-radius:0 0 0 8px;">X轴 ≤ 0<br><small style="font-weight:normal;">相对强度为负<br>长端弱于短端</small></div>
-                <div style="flex:2;padding:16px;background:#d6eaf8;text-align:center;border:2px solid #3498db;">
-                    <div style="font-size:20px;font-weight:bold;color:#3498db;">🔵 改善</div>
-                    <div style="font-size:13px;color:#333;margin-top:8px;">长端弱于短端<br>但动量正在改善<br><b style="color:#3498db;">→ 关注区域</b></div>
+            <!-- 第二行：Y轴 ≤ 0 -->
+            <div style="display:flex;width:100%;max-width:600px;">
+                <div style="width:76px;display:flex;align-items:center;justify-content:center;padding:8px;background:#ffebee;font-weight:bold;font-size:12px;color:#c62828;border-radius:0 0 0 6px;margin-right:4px;">Y轴 ≤ 0<br>动量向下</div>
+                <div style="flex:1;padding:14px;background:#fadbd8;text-align:center;border:2px solid #e74c3c;border-right:1px solid #e74c3c;border-top:1px solid #e74c3c;border-radius:0 0 0 6px;">
+                    <div style="font-size:18px;font-weight:bold;color:#e74c3c;">🔴 滞后</div>
+                    <div style="font-size:12px;color:#333;margin-top:6px;">相对强度为负<br>且动量向下<br><b style="color:#e74c3c;">→ 卖出/避险区域</b></div>
                 </div>
-                <div style="flex:2;padding:16px;background:#fadbd8;text-align:center;border:2px solid #e74c3c;">
-                    <div style="font-size:20px;font-weight:bold;color:#e74c3c;">🔴 滞后</div>
-                    <div style="font-size:13px;color:#333;margin-top:8px;">长端弱于短端<br>且动量继续向下<br><b style="color:#e74c3c;">→ 卖出/避险区域</b></div>
+                <div style="flex:1;padding:14px;background:#fdebd0;text-align:center;border:2px solid #f39c12;border-top:1px solid #f39c12;">
+                    <div style="font-size:18px;font-weight:bold;color:#f39c12;">🟡 减弱</div>
+                    <div style="font-size:12px;color:#333;margin-top:6px;">相对强度为正<br>但动量向下<br><b style="color:#f39c12;">→ 警惕区域</b></div>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("""
-        <div style="font-size:13px;color:#666;margin-top:8px;text-align:center;">
+        <div style="font-size:13px;color:#666;margin-top:4px;text-align:center;">
             <b>趋势判断：</b>X轴MA > 0 为上升趋势，X轴MA ≤ 0 为下降趋势（与四象限独立判断）
         </div>
         """, unsafe_allow_html=True)
