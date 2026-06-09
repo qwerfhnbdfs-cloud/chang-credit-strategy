@@ -218,7 +218,7 @@ class StrategyCalculator:
 
 # ============ Streamlit UI ============
 
-st.title("📊 长信用策略可视化 - 状态转换信号系统")
+st.title("📊 长信用择时策略—基于趋势和价格双维信号")
 
 # ============ 数据加载配置 ============
 # GitHub Raw URL（部署后改成你的实际链接）
@@ -699,6 +699,106 @@ with tab_rules:
     latest = signal.iloc[-1]
     latest_date = latest['日期'].strftime('%Y-%m-%d') if pd.notna(latest['日期']) else 'N/A'
 
+    # ===== 策略原理说明（新增）=====
+    st.subheader("📖 策略原理")
+
+    with st.expander("点击展开：了解策略背后的逻辑", expanded=True):
+        st.markdown("""
+        <div style="font-size:14px;line-height:1.8;color:#333;">
+        <p>本策略采用<b>双维度信号系统</b>，通过<b>趋势维度（RRG旋转图）</b>和<b>价格维度（估值分位数）</b>共同判断买卖时机。</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # X轴和Y轴计算方式
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("""
+            <div style="background:#f0f7ff;border-radius:10px;padding:16px;border-left:4px solid #3498db;">
+                <h4 style="color:#3498db;margin-top:0;">📐 X轴 — 相对强度</h4>
+                <div style="font-size:13px;line-height:1.8;">
+                    <p><b>计算方式：</b></p>
+                    <ol>
+                        <li>比值 = 长端平均财富指数 ÷ 短端平均财富指数</li>
+                        <li>比值MA = 比值的移动平均值</li>
+                        <li><b>X轴 = (比值 - 比值MA) ÷ 比值MA × 100</b></li>
+                    </ol>
+                    <p><b>含义：</b></p>
+                    <ul>
+                        <li>X轴 > 0：长端表现<strong style="color:#27ae60;">强于</strong>短端（相对强度为正）</li>
+                        <li>X轴 ≤ 0：长端表现<strong style="color:#e74c3c;">弱于</strong>短端（相对强度为负）</li>
+                    </ul>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c2:
+            st.markdown("""
+            <div style="background:#fff5f0;border-radius:10px;padding:16px;border-left:4px solid #e74c3c;">
+                <h4 style="color:#e74c3c;margin-top:0;">📐 Y轴 — 动量</h4>
+                <div style="font-size:13px;line-height:1.8;">
+                    <p><b>计算方式：</b></p>
+                    <ol>
+                        <li>取X轴当前值</li>
+                        <li>取X轴N日前值（动量周期，默认14日）</li>
+                        <li><b>Y轴 = X轴当前值 - X轴N日前值</b></li>
+                    </ol>
+                    <p><b>含义：</b></p>
+                    <ul>
+                        <li>Y轴 > 0：相对强度在<strong style="color:#27ae60;">增加</strong>（动量向上）</li>
+                        <li>Y轴 ≤ 0：相对强度在<strong style="color:#e74c3c;">减弱</strong>（动量向下）</li>
+                    </ul>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # 四象限矩阵图
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color:#667eea;'>🎯 四象限含义矩阵</h4>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="display:flex;flex-direction:column;align-items:center;margin:16px 0;">
+            <!-- 列标题 -->
+            <div style="display:flex;width:100%;max-width:700px;">
+                <div style="flex:1;text-align:center;padding:8px;font-weight:bold;color:#666;"></div>
+                <div style="flex:2;text-align:center;padding:8px;background:#e8f5e9;border-radius:8px 8px 0 0;font-weight:bold;color:#2e7d32;">Y轴 > 0（动量向上）</div>
+                <div style="flex:2;text-align:center;padding:8px;background:#ffebee;border-radius:8px 8px 0 0;font-weight:bold;color:#c62828;">Y轴 ≤ 0（动量向下）</div>
+            </div>
+            <!-- 第一行 -->
+            <div style="display:flex;width:100%;max-width:700px;">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;background:#e3f2fd;font-weight:bold;color:#1565c0;border-radius:8px 0 0 0;">X轴 > 0<br><small style="font-weight:normal;">相对强度为正<br>长端强于短端</small></div>
+                <div style="flex:2;padding:16px;background:#d5f5e3;text-align:center;border:2px solid #27ae60;">
+                    <div style="font-size:20px;font-weight:bold;color:#27ae60;">🟢 领先</div>
+                    <div style="font-size:13px;color:#333;margin-top:8px;">长端强于短端<br>且动量向上<br><b style="color:#27ae60;">→ 最佳买入区域</b></div>
+                </div>
+                <div style="flex:2;padding:16px;background:#fdebd0;text-align:center;border:2px solid #f39c12;">
+                    <div style="font-size:20px;font-weight:bold;color:#f39c12;">🟡 减弱</div>
+                    <div style="font-size:13px;color:#333;margin-top:8px;">长端仍强于短端<br>但动量开始减弱<br><b style="color:#f39c12;">→ 警惕区域</b></div>
+                </div>
+            </div>
+            <!-- 第二行 -->
+            <div style="display:flex;width:100%;max-width:700px;">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;background:#e3f2fd;font-weight:bold;color:#1565c0;border-radius:0 0 0 8px;">X轴 ≤ 0<br><small style="font-weight:normal;">相对强度为负<br>长端弱于短端</small></div>
+                <div style="flex:2;padding:16px;background:#d6eaf8;text-align:center;border:2px solid #3498db;">
+                    <div style="font-size:20px;font-weight:bold;color:#3498db;">🔵 改善</div>
+                    <div style="font-size:13px;color:#333;margin-top:8px;">长端弱于短端<br>但动量正在改善<br><b style="color:#3498db;">→ 关注区域</b></div>
+                </div>
+                <div style="flex:2;padding:16px;background:#fadbd8;text-align:center;border:2px solid #e74c3c;">
+                    <div style="font-size:20px;font-weight:bold;color:#e74c3c;">🔴 滞后</div>
+                    <div style="font-size:13px;color:#333;margin-top:8px;">长端弱于短端<br>且动量继续向下<br><b style="color:#e74c3c;">→ 卖出/避险区域</b></div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div style="font-size:13px;color:#666;margin-top:8px;text-align:center;">
+            <b>趋势判断：</b>X轴MA > 0 为上升趋势，X轴MA ≤ 0 为下降趋势（与四象限独立判断）
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ===== 原有内容保留 =====
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("""
