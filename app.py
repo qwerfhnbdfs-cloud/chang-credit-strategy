@@ -311,6 +311,14 @@ st.sidebar.markdown(f"<small>📡 数据来源: {data_source}</small>", unsafe_a
 with st.spinner("🔄 正在计算..."):
     rrg, price, signal, stats = calc.run_full(params)
 
+# --- 更新时间 ---
+latest_date_str = signal.iloc[-1]['日期'].strftime('%Y/%m/%d') if pd.notna(signal.iloc[-1]['日期']) else 'N/A'
+st.markdown(f"""
+<div style="text-align:right;font-size:13px;color:#888;margin-bottom:4px;">
+    更新时间：{latest_date_str}
+</div>
+""", unsafe_allow_html=True)
+
 # --- 顶部统计栏 ---
 s = stats
 st.markdown("---")
