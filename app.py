@@ -665,12 +665,31 @@ with tab_backtest:
     st.subheader("年度收益对比")
     sig_bt['年份'] = sig_bt['日期str'].str[:4]
     yearly = []
+    yearly_stats = []
+
+    def _calc_max_drawdown(nav_series):
+        """辅助函数：计算最大回撤"""
+        max_dd = 0.0
+        peak = nav_series.iloc[0]
+        for i in range(1, len(nav_series)):
+            if nav_series.iloc[i] > peak:
+                peak = nav_series.iloc[i]
+            dd = (nav_series.iloc[i] - peak) / peak
+            if dd < max_dd:
+                max_dd = dd
+        return max_dd
+
     for y, g in sig_bt.groupby('年份'):
         if len(g) <= 10:
             continue
         g = g.sort_values('日期').reset_index(drop=True)
         g['修正久期'] = g['收益率7Y'].apply(lambda yy: calc_modified_duration(yy, years=7))
         g['日总收益'] = g['收益率7Y'] / 100 / 365 + (-g['修正久期'] * g['收益率7Y'].diff() / 100)
+
+        # 计算年度策略净值和买入持有净值（从1开始）
+        g['策略净值'] = (1 + np.where(g['确认后持仓'] == '持仓', g['日总收益'].fillna(0), 0)).cumprod()
+        g['买入持有净值'] = (1 + g['日总收益'].fillna(0)).cumprod()
+
         strat_ret = 1
         bh_ret = 1
         for i in range(1, len(g)):
@@ -678,8 +697,33 @@ with tab_backtest:
             if g.iloc[i]['确认后持仓'] == '持仓':
                 strat_ret *= (1 + daily)
             bh_ret *= (1 + daily)
-        yearly.append({'年份': y, '策略': round((strat_ret - 1) * 100, 2),
-                       '买入持有': round((bh_ret - 1) * 100, 2)})
+
+        # 年度统计数据
+        hold_cnt = len(g[g['确认后持仓'] == '持仓'])
+        empty_cnt = len(g[g['确认后持仓'] == '空仓'])
+        trade_cnt = len(g[g['交易动作'].isin(['买入', '卖出'])])
+        strat_pct = (strat_ret - 1) * 100
+        bh_pct = (bh_ret - 1) * 100
+
+        # 年度最大回撤
+        dd_strat = _calc_max_drawdown(g['策略净值']) * 100
+        dd_bh = _calc_max_drawdown(g['买入持有净值']) * 100
+
+        yearly.append({'年份': y, '策略': round(strat_pct, 2), '买入持有': round(bh_pct, 2)})
+        yearly_stats.append({
+            '年份': y,
+            '总天数': len(g),
+            '交易次数': trade_cnt,
+            '持仓天数': hold_cnt,
+            '空仓天数': empty_cnt,
+            '覆盖率': round(hold_cnt / len(g) * 100, 1),
+            '策略收益': round(strat_pct, 2),
+            '买入持有收益': round(bh_pct, 2),
+            '超额收益': round(strat_pct - bh_pct, 2),
+            '策略最大回撤': round(dd_strat, 2),
+            '买持最大回撤': round(dd_bh, 2),
+        })
+
     if yearly:
         df_yearly = pd.DataFrame(yearly)
         fig14 = go.Figure()
@@ -691,6 +735,26 @@ with tab_backtest:
                            margin=dict(l=50, r=20, t=30, b=40),
                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig14, use_container_width=True, key="bt_yearly")
+
+    # 年度详细统计卡片
+    if yearly_stats:
+        st.subheader("年度回测统计明细")
+        for ys in yearly_stats:
+            with st.container():
+                st.markdown(f"**{ys['年份']}年**")
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("总天数", ys['总天数'])
+                c2.metric("交易次数", ys['交易次数'])
+                c3.metric("持仓天数", ys['持仓天数'])
+                c4.metric("空仓天数", ys['空仓天数'])
+                c5.metric("覆盖率", f"{ys['覆盖率']}%")
+                c6, c7, c8, c9, c10 = st.columns(5)
+                c6.metric("策略收益", f"{ys['策略收益']}%")
+                c7.metric("买入持有收益", f"{ys['买入持有收益']}%")
+                c8.metric("超额收益", f"{ys['超额收益']}%")
+                c9.metric("策略最大回撤", f"{ys['策略最大回撤']}%")
+                c10.metric("买持最大回撤", f"{ys['买持最大回撤']}%")
+                st.markdown("---")
 
     # 交易记录
     st.subheader("交易记录")
