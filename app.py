@@ -23,6 +23,16 @@ st.set_page_config(
 
 # ============ 核心计算模块（完全保留 server.py 逻辑）============
 
+def calc_modified_duration(yield_rate, years=7, freq=1):
+    """计算平价债券的修正久期"""
+    y = yield_rate / 100 / freq
+    n = years * freq
+    if y == 0:
+        return years
+    macaulay = (1 + y) / y * (1 - 1 / (1 + y) ** n)
+    return macaulay / (1 + y)
+
+
 class StrategyCalculator:
     """核心策略计算类"""
 
@@ -182,10 +192,14 @@ class StrategyCalculator:
         empty = len(df[df['确认后持仓'] == '空仓'])
         coverage = hold / len(df) * 100
 
-        df['日收益'] = -df['收益率7Y'].diff() / 100
-        df['策略日收益'] = np.where(df['确认后持仓'] == '持仓', df['日收益'].fillna(0), 0)
+        # 修正版收益计算（票息+修正久期资本利得）
+        df['修正久期'] = df['收益率7Y'].apply(lambda y: calc_modified_duration(y, years=7))
+        df['票息日收益'] = df['收益率7Y'] / 100 / 365
+        df['资本利得'] = -df['修正久期'] * df['收益率7Y'].diff() / 100
+        df['日总收益'] = df['票息日收益'] + df['资本利得']
+        df['策略日收益'] = np.where(df['确认后持仓'] == '持仓', df['日总收益'].fillna(0), 0)
         df['策略累计'] = (1 + df['策略日收益']).cumprod() - 1
-        df['买入持有累计'] = (1 + df['日收益'].fillna(0)).cumprod() - 1
+        df['买入持有累计'] = (1 + df['日总收益'].fillna(0)).cumprod() - 1
 
         latest = df.iloc[-1]
         return {
@@ -602,10 +616,14 @@ with tab_signal:
 # ==================== Tab 4: 回测统计 ====================
 with tab_backtest:
     sig_bt = signal.copy()
-    sig_bt['日收益'] = -sig_bt['收益率7Y'].diff() / 100
-    sig_bt['策略日收益'] = np.where(sig_bt['确认后持仓'] == '持仓', sig_bt['日收益'].fillna(0), 0)
+    # 修正版收益计算（票息+修正久期资本利得）
+    sig_bt['修正久期'] = sig_bt['收益率7Y'].apply(lambda yy: calc_modified_duration(yy, years=7))
+    sig_bt['票息日收益'] = sig_bt['收益率7Y'] / 100 / 365
+    sig_bt['资本利得'] = -sig_bt['修正久期'] * sig_bt['收益率7Y'].diff() / 100
+    sig_bt['日总收益'] = sig_bt['票息日收益'] + sig_bt['资本利得']
+    sig_bt['策略日收益'] = np.where(sig_bt['确认后持仓'] == '持仓', sig_bt['日总收益'].fillna(0), 0)
     sig_bt['策略累计'] = (1 + sig_bt['策略日收益']).cumprod() - 1
-    sig_bt['买入持有累计'] = (1 + sig_bt['日收益'].fillna(0)).cumprod() - 1
+    sig_bt['买入持有累计'] = (1 + sig_bt['日总收益'].fillna(0)).cumprod() - 1
     sig_bt['日期str'] = sig_bt['日期'].dt.strftime('%Y-%m-%d')
     dates_bt = sig_bt['日期str'].tolist()
 
@@ -651,10 +669,12 @@ with tab_backtest:
         if len(g) <= 10:
             continue
         g = g.sort_values('日期').reset_index(drop=True)
+        g['修正久期'] = g['收益率7Y'].apply(lambda yy: calc_modified_duration(yy, years=7))
+        g['日总收益'] = g['收益率7Y'] / 100 / 365 + (-g['修正久期'] * g['收益率7Y'].diff() / 100)
         strat_ret = 1
         bh_ret = 1
         for i in range(1, len(g)):
-            daily = -(g.iloc[i]['收益率7Y'] - g.iloc[i - 1]['收益率7Y']) / 100
+            daily = g.iloc[i]['日总收益']
             if g.iloc[i]['确认后持仓'] == '持仓':
                 strat_ret *= (1 + daily)
             bh_ret *= (1 + daily)
