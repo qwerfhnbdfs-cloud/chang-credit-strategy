@@ -194,10 +194,13 @@ class StrategyCalculator:
 
         # 修正版收益计算（票息+修正久期资本利得）
         df['修正久期'] = df['收益率7Y'].apply(lambda y: calc_modified_duration(y, years=7))
-        df['票息日收益'] = df['收益率7Y'] / 100 / 365
+        # 问题2修正：票息按相邻两行的实际自然日天数计息（改法B，最准确；含跨周末/节假日）
+        天数 = df['日期'].diff().dt.days
+        df['票息日收益'] = df['收益率7Y'] / 100 * 天数 / 365
         df['资本利得'] = -df['修正久期'] * df['收益率7Y'].diff() / 100
         df['日总收益'] = df['票息日收益'] + df['资本利得']
-        df['策略日收益'] = np.where(df['确认后持仓'] == '持仓', df['日总收益'].fillna(0), 0)
+        # 问题1修正：用昨天收盘确定的仓位赚今天的收益（确认后持仓.shift(1)），消除未来函数
+        df['策略日收益'] = np.where(df['确认后持仓'].shift(1) == '持仓', df['日总收益'].fillna(0), 0)
         df['策略累计'] = (1 + df['策略日收益']).cumprod() - 1
         df['买入持有累计'] = (1 + df['日总收益'].fillna(0)).cumprod() - 1
 
@@ -618,10 +621,13 @@ with tab_backtest:
     sig_bt = signal.copy()
     # 修正版收益计算（票息+修正久期资本利得）
     sig_bt['修正久期'] = sig_bt['收益率7Y'].apply(lambda yy: calc_modified_duration(yy, years=7))
-    sig_bt['票息日收益'] = sig_bt['收益率7Y'] / 100 / 365
+    # 问题2修正：票息按相邻两行的实际自然日天数计息（改法B，最准确；含跨周末/节假日）
+    sig_bt['天数'] = sig_bt['日期'].diff().dt.days
+    sig_bt['票息日收益'] = sig_bt['收益率7Y'] / 100 * sig_bt['天数'] / 365
     sig_bt['资本利得'] = -sig_bt['修正久期'] * sig_bt['收益率7Y'].diff() / 100
     sig_bt['日总收益'] = sig_bt['票息日收益'] + sig_bt['资本利得']
-    sig_bt['策略日收益'] = np.where(sig_bt['确认后持仓'] == '持仓', sig_bt['日总收益'].fillna(0), 0)
+    # 问题1修正：用昨天收盘确定的仓位赚今天的收益（确认后持仓.shift(1)），消除未来函数
+    sig_bt['策略日收益'] = np.where(sig_bt['确认后持仓'].shift(1) == '持仓', sig_bt['日总收益'].fillna(0), 0)
     sig_bt['策略累计'] = (1 + sig_bt['策略日收益']).cumprod() - 1
     sig_bt['买入持有累计'] = (1 + sig_bt['日总收益'].fillna(0)).cumprod() - 1
     sig_bt['日期str'] = sig_bt['日期'].dt.strftime('%Y-%m-%d')
@@ -683,20 +689,17 @@ with tab_backtest:
         if len(g) <= 10:
             continue
         g = g.sort_values('日期').reset_index(drop=True)
-        g['修正久期'] = g['收益率7Y'].apply(lambda yy: calc_modified_duration(yy, years=7))
-        g['日总收益'] = g['收益率7Y'] / 100 / 365 + (-g['修正久期'] * g['收益率7Y'].diff() / 100)
+        # 问题3修正：直接复用完整序列上算好的日收益列（diff/shift 已跨年连续，不丢每年第一天），
+        # 按年累乘即可，保证各年度收益能与总收益对得上
+        strat_daily = g['策略日收益'].fillna(0)
+        bh_daily = g['日总收益'].fillna(0)
 
         # 计算年度策略净值和买入持有净值（从1开始）
-        g['策略净值'] = (1 + np.where(g['确认后持仓'] == '持仓', g['日总收益'].fillna(0), 0)).cumprod()
-        g['买入持有净值'] = (1 + g['日总收益'].fillna(0)).cumprod()
+        g['策略净值'] = (1 + strat_daily).cumprod()
+        g['买入持有净值'] = (1 + bh_daily).cumprod()
 
-        strat_ret = 1
-        bh_ret = 1
-        for i in range(1, len(g)):
-            daily = g.iloc[i]['日总收益']
-            if g.iloc[i]['确认后持仓'] == '持仓':
-                strat_ret *= (1 + daily)
-            bh_ret *= (1 + daily)
+        strat_ret = (1 + strat_daily).prod()
+        bh_ret = (1 + bh_daily).prod()
 
         # 年度统计数据
         hold_cnt = len(g[g['确认后持仓'] == '持仓'])
